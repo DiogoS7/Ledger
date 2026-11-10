@@ -56,8 +56,7 @@ a { color: var(--accent); }
 .masthead { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 .masthead-row { display: flex; align-items: center; gap: 24px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font: 600 21px/1 var(--serif); letter-spacing: .2px; }
-.logo { width: 28px; height: 28px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
-.logo circle { fill: var(--series-2); stroke: none; }
+.logo { width: 26px; height: 26px; fill: var(--series-2); }
 .toc { display: flex; gap: 4px; margin-left: auto; }
 .toc a { color: var(--ink-2); text-decoration: none; padding: 6px 10px; border-radius: 8px; font-size: 14px; }
 .toc a:hover, .toc a.on { color: var(--ink); background: var(--surface-2); }
