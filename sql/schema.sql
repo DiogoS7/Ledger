@@ -1,4 +1,4 @@
--- Ledger · card transactions of Banco Marés (a fictional Portuguese retail bank)
+-- Ledger · card transactions of Meridian Bank (a fictional Portuguese retail bank)
 -- One row per customer, card, merchant and card transaction.
 -- chargebacks holds the transactions customers later disputed; reason = 'fraud'
 -- is the ground truth the fraud rules are scored against.

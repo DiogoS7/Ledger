@@ -1,4 +1,4 @@
-"""Generate the Banco Marés card dataset into SQLite.
+"""Generate the Meridian Bank card dataset into SQLite.
 
 Everything is synthetic and seeded, so the same seed always produces the same
 database. Twelve months of everyday card spending for a few thousand customers,

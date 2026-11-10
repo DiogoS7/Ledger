@@ -6,7 +6,7 @@
 
 Card fraud and transaction analytics in **Python and SQL**. Live report: **[diogos7.github.io/Ledger](https://diogos7.github.io/Ledger/)**
 
-A year of card payments at Banco Marés, a fictional Portuguese retail bank: 430,000 payments from 1,500 customers on 2,100 cards. The analysis answers two questions a card portfolio team would ask:
+A year of card payments at Meridian Bank, a fictional Portuguese retail bank: 430,000 payments from 1,500 customers on 2,100 cards. The analysis answers two questions a card portfolio team would ask:
 
 1. **Where does the money go?** Monthly volume, merchant categories, contactless adoption, when people pay and who spends most.
 2. **Where does fraud hide, and how do we catch it?** Six fraud rules written in SQL are scored against what actually came back as fraud, then combined into one risk score with a block tier and a review tier.
