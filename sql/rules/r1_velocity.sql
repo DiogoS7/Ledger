@@ -1,4 +1,4 @@
--- R1 · Velocity burst
+-- R1 · Rapid-fire charges
 -- Card testing shows up as many charges on one card in a few minutes.
 -- Count every attempt (declined ones too) on the card in the last :window_s
 -- seconds and flag approved transactions once the count reaches :min_txns.

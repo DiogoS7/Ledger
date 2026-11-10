@@ -1,4 +1,4 @@
--- R6 · First high-risk merchant abroad
+-- R6 · New country, risky shop
 -- The first time a card ever pays a high-risk merchant in a given foreign country.
 -- Params: min_eur = 100
 WITH firsts AS (

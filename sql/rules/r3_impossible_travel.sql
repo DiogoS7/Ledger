@@ -1,4 +1,4 @@
--- R3 · Impossible travel
+-- R3 · Two places at once
 -- A cloned card is used in a shop abroad while the real card is still being
 -- used at home. Flag a card-present payment abroad when the same card also
 -- made a card-present payment in Portugal less than :max_hours hours before

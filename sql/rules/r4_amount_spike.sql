@@ -1,4 +1,4 @@
--- R4 · Amount spike
+-- R4 · Unusually big payment
 -- A payment far above what this card normally spends.
 -- Baseline = average of the card's previous :history approved payments (at least 10 of them).
 -- Flag when the amount is :multiple times the baseline and at least :floor_eur.

@@ -1,47 +1,49 @@
-[![Ledger: card fraud & transaction analytics](docs/social-preview.png)](https://diogos7.github.io/Ledger/)
+[![Ledger: how people spend, and how to catch a card thief](docs/social-preview.png)](https://diogos7.github.io/Ledger/)
 
 # Ledger
 
 [![CI](https://github.com/DiogoS7/Ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/DiogoS7/Ledger/actions/workflows/ci.yml)
 
-Card fraud and transaction analytics in **Python and SQL**. Live report: **[diogos7.github.io/Ledger](https://diogos7.github.io/Ledger/)**
+**How people spend, and how to catch a card thief.** Try it live: **[diogos7.github.io/Ledger](https://diogos7.github.io/Ledger/)**
 
-A year of card payments at Meridian Bank, a fictional Portuguese retail bank: 430,000 payments from 1,500 customers on 2,100 cards. The analysis answers two questions a card portfolio team would ask:
+Ledger follows a year of card payments at Meridian Bank, a made-up Portuguese bank: 430,000 payments from 1,500 customers. It answers three questions in plain words, for anyone to read:
 
-1. **Where does the money go?** Monthly volume, merchant categories, contactless adoption, when people pay and who spends most.
-2. **Where does fraud hide, and how do we catch it?** Six fraud rules written in SQL are scored against what actually came back as fraud, then combined into one risk score with a block tier and a review tier.
+1. **Where does the money go?** What people spend on, when they pay, and how fast tapping the card is taking over.
+2. **How do fraudsters steal?** Three common tricks, where the money goes and how long people take to notice.
+3. **How do you catch them?** Six simple checks look at every payment and give it points. Enough points and the payment is stopped.
 
-![Report overview](docs/screenshots/overview.png)
+Under the hood it is a data analysis project in **Python and SQL**: a SQLite database, SQL queries for every number, fraud checks written as SQL, and Python (pandas) to score how well they work.
 
-## Key findings
+![The report](docs/screenshots/overview.png)
 
-- **Fraud lives online and abroad.** 74% of fraud losses came through online payments and 79% from foreign merchants, while only 5% of payments happen abroad. Contactless had no fraud at all.
-- **Two tiers beat one big net.** Blocking at a risk score of 60 stops 77% of fraud value with 90% precision. A review queue from 35 lifts that to 94% of value, at the cost of 279 genuine payments to check in a year.
-- **Single rules are noisy.** The amount-spike rule alone catches the most fraud value, but only 2.8% of its alerts are fraud. As one signal among six it stops being a false-alarm machine.
-- **Customers notice late.** Half of the fraud is reported 12 days or more after the payment, so rules have to act at the moment of payment.
-- **Contactless keeps growing**, from 53% to 71% of card-present payments over the year.
+## What we found
 
-## The fraud rules
+- **Most fraud happens online.** €74 of every €100 stolen was taken through online shopping. Tapping a card in a shop: €0.
+- **Fraudsters spend abroad.** 79% of the stolen money went outside Portugal, where only 5 in 100 payments happen.
+- **Simple checks stop most of it.** Working together, six checks stop 77% of the stolen money automatically, and 9 in 10 of the payments they stop really are fraud.
+- **A quick human look catches more.** Checking the less obvious cases by hand raises that to 94%.
+- **People notice too late.** Half of the victims took 12 days or more to report it, so the bank has to act the moment the payment is made.
+- **Tapping is taking over**, from 53% to 71% of shop payments in one year.
 
-Each rule is a single SQL query in [`sql/rules/`](sql/rules), mostly built on window functions, with its thresholds passed in as named parameters.
+## The six checks
 
-| Rule | Aimed at | How it works | Precision | Value caught |
-| --- | --- | --- | ---: | ---: |
-| R1 Velocity burst | Card testing | 4+ attempts on one card in 10 minutes (`COUNT(*) OVER … RANGE BETWEEN 600 PRECEDING`) | 100% | 0% |
-| R2 Test, then spend | Card testing | A €200+ online payment after 3+ charges under €3 in the previous 2 hours | 100% | 20% |
-| R3 Impossible travel | Cloned card | Card-present abroad and in Portugal within 2 hours | 29% | 20% |
-| R4 Amount spike | Account takeover | 8× the card's average of its last 50 payments, and at least €250 | 3% | 79% |
-| R5 Night-time high-risk | Account takeover | Online, high-risk merchant, €150+, between midnight and 5am | 67% | 55% |
-| R6 First high-risk merchant abroad | Account takeover | First payment at a high-risk merchant in a new foreign country (`ROW_NUMBER()`) | 11% | 40% |
-| **Block · score ≥ 60** | All | Sum of the points of every rule that fires | **90%** | **77%** |
-| **Block + review · score ≥ 35** | All | | **42%** | **94%** |
+| Check | In plain words | Aimed at | Alerts that are real fraud |
+| --- | --- | --- | ---: |
+| Rapid-fire charges | The same card is charged 4+ times within 10 minutes | Card testing | 10 in 10 |
+| Test, then spend | A €200+ online purchase right after a few tiny test charges | Card testing | 10 in 10 |
+| Two places at once | Used in a shop abroad within 2 hours of being used in Portugal | Copied card | 3 in 10 |
+| Unusually big payment | €250+ and 8 times bigger than this card usually spends | Hijacked account | 3 in 100 |
+| Late-night risky shop | €150+ online at electronics, jewellery, gift cards or crypto, midnight to 5am | Hijacked account | 7 in 10 |
+| New country, risky shop | The card's first payment at a risky kind of shop in a new country | Hijacked account | 1 in 10 |
 
-Alerts are raised on approved payments only, but declined attempts still count as signal (a burst of declines is what card testing looks like).
+Each check adds points. **Under 35** the payment goes through, **35–59** someone at the bank takes a look, and **60 or more** the payment is stopped and the customer gets a call. One check on its own is noisy; together they are accurate.
+
+Every check is a single SQL query in [`sql/rules/`](sql/rules), built on window functions:
 
 ```sql
--- R1 · Velocity burst
+-- Rapid-fire charges: 4+ charges on one card within 10 minutes
 WITH counted AS (
-    SELECT txn_id, card_id, ts, status,
+    SELECT txn_id, status,
            COUNT(*) OVER (
                PARTITION BY card_id
                ORDER BY unixepoch(ts)
@@ -55,37 +57,37 @@ WHERE status = 'Approved' AND txns_in_window >= :min_txns;
 
 ## Screenshots
 
-| Spending | Fraud |
+| How people spend | How fraud happens |
 | --- | --- |
-| ![Spending: monthly volume, categories, channels, heatmap](docs/screenshots/spending.png) | ![Fraud: monthly losses, channel, time to report, hotspots](docs/screenshots/fraud.png) |
+| ![Spending](docs/screenshots/spending.png) | ![Fraud](docs/screenshots/fraud.png) |
 
-| Rule scorecard and SQL | Pick the threshold |
+| The six checks | Try it: how strict should the bank be? |
 | --- | --- |
-| ![Rule scorecard and SQL viewer](docs/screenshots/rules.png) | ![Threshold explorer](docs/screenshots/threshold.png) |
+| ![The checks](docs/screenshots/checks.png) | ![Strictness slider](docs/screenshots/try.png) |
 
-| Tuning a single rule | Alert queue |
+| Real examples | For the technical reader |
 | --- | --- |
-| ![Precision and recall as each rule is loosened](docs/screenshots/tuning.png) | ![Highest-risk alerts with evidence](docs/screenshots/queue.png) |
+| ![Examples](docs/screenshots/examples.png) | ![Scorecard, tuning and SQL](docs/screenshots/technical.png) |
 
 | Dark theme | Phone |
 | --- | --- |
-| ![Dark theme](docs/screenshots/dark.png) | <img src="docs/screenshots/mobile.png" alt="Phone layout" width="300"> |
+| ![Dark theme](docs/screenshots/dark.png) | <img src="docs/screenshots/mobile.png" alt="Phone" width="300"> |
 
 ## How it works
 
 ```
 python -m ledger
   │
-  ├─ generate   ledger/generate.py  → data/ledger.db   (SQLite, seeded, same data every run)
+  ├─ generate   ledger/generate.py  → data/ledger.db   (SQLite, same data every run)
   │                customers · cards · merchants · transactions · chargebacks
   │
-  └─ report     ledger/report.py    → site/            (static report for GitHub Pages)
+  └─ report     ledger/report.py    → site/            (the web page, published to GitHub Pages)
                    runs sql/analysis/*.sql and sql/rules/*.sql through pandas,
-                   scores the rules (ledger/rules.py), writes data.json,
+                   scores the checks (ledger/rules.py), writes data.json,
                    and copies the page from web/ (plain HTML, CSS and JavaScript charts)
 ```
 
-The data is synthetic. Everyday spending follows each customer's segment, age and home district, with seasonality (December, summer), a growing share of contactless, trips abroad, and some legitimate late-night online shopping. Three kinds of attack are planted in it: **card testing** (tiny online charges, then big ones), **cloned cards** used in shops and ATMs abroad while the real card is still in use at home, and **account takeovers** (night-time online sprees at high-risk merchants). Every approved fraudulent payment gets a chargeback with reason `fraud`, which is the ground truth the rules are scored against. A few genuine disputes are mixed in to keep the analysis honest.
+The data is synthetic. Everyday spending depends on each customer's type, age and home district, with busy Decembers and summers, trips abroad and more tapping over time. Three tricks are planted in it: **card testing** (tiny charges, then big ones), **copied cards** used abroad while the real card is still at home, and **hijacked accounts** (big night-time purchases online). Every stolen payment later comes back as a fraud claim (a chargeback), which is how the checks are scored. A few genuine disputes are mixed in to keep it honest.
 
 ## Project layout
 
@@ -93,40 +95,34 @@ The data is synthetic. Everyday spending follows each customer's segment, age an
 ledger/            Python package
   generate.py      builds the SQLite database
   db.py            runs a .sql file and returns a DataFrame
-  rules.py         rule definitions, scoring, combined risk score, tuning sweeps
-  report.py        runs everything and writes the report site
+  rules.py         the six checks, scoring, the points system, tuning
+  report.py        runs everything and writes the web page
 sql/
   schema.sql       tables, constraints and indexes
-  analysis/        01–10: spending and fraud analysis queries
-  rules/           r1–r6: the fraud rules, plus ground_truth.sql
-web/               the report page (index.html, styles.css, app.js)
-tests/             pytest: each rule on hand-made transactions, plus end-to-end checks
+  analysis/        01–10: spending and fraud queries
+  rules/           r1–r6: the checks, plus ground_truth.sql
+web/               the page (index.html, styles.css, app.js)
+tests/             pytest: every check on hand-made payments, plus end-to-end checks
 ```
 
-## Run it locally
+## Run it on your computer
 
 Needs Python 3.10 or newer.
 
 ```bash
+cd Ledger
 pip install -r requirements.txt
-python -m ledger                  # generate the database and build the report (about a minute)
-python -m http.server 8000 -d site
-# then open http://localhost:8000
+python -m ledger                     # build the database and the page (about a minute)
+python -m http.server 8000 -d site   # then open http://localhost:8000
 ```
 
-Open `data/ledger.db` in any SQLite client (DB Browser for SQLite, DBeaver, VS Code) to run your own queries.
-
-```bash
-python -m ledger generate --seed 7 --customers 1500   # just the database
-python -m ledger report                               # just the report
-python -m pytest -q                                   # tests
-```
+Open `data/ledger.db` in any SQLite tool (DB Browser for SQLite, DBeaver, VS Code) to run your own queries. `python -m pytest -q` runs the tests.
 
 ## Tests and CI
 
-17 pytest tests. Every rule is tested on hand-made transactions in an in-memory database: it must fire on the attack it targets and stay quiet on the genuine behaviour that looks like it (a traveller landing abroad, a burst of payments spread over a day, a big purchase with no history). End-to-end tests check that generation is deterministic, the data is consistent, every query runs and the combined score beats the noisiest rule.
+17 pytest tests. Every check is tested on hand-made payments: it must fire on the trick it targets and stay quiet on the honest behaviour that looks like it (a traveller landing abroad, a busy shopping day, a big purchase with no history). End-to-end tests make sure the data is the same on every run, every query works and the combined score beats the noisiest single check.
 
-GitHub Actions runs the tests on every push, builds the database and the report, and deploys the report to GitHub Pages.
+GitHub Actions runs the tests on every push, rebuilds the database and the page, and publishes it to GitHub Pages.
 
 ## License
 

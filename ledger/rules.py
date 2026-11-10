@@ -20,24 +20,38 @@ class Rule:
     weight: int              # points added to the risk score when the rule fires
     catches: str             # the attack it is aimed at
     tune: tuple = field(default=())   # (param, [values]) for the tuning chart
+    plain: str = ""          # the rule in everyday words, for the report
+    reason: str = ""         # short reason shown on an example alert
 
 
 RULES = [
-    Rule("R1", "Velocity burst", "r1_velocity",
+    Rule("R1", "Rapid-fire charges", "r1_velocity",
          {"window_s": 600, "min_txns": 4}, 40, "Card testing",
-         ("min_txns", [2, 3, 4, 5, 6, 8])),
+         ("min_txns", [2, 3, 4, 5, 6, 8]),
+         "The same card is charged 4 or more times within 10 minutes.",
+         "lots of charges in a few minutes"),
     Rule("R2", "Test, then spend", "r2_test_then_spend",
-         {"micro_eur": 3, "min_micro": 3, "big_eur": 200, "lookback_s": 7200}, 60, "Card testing"),
-    Rule("R3", "Impossible travel", "r3_impossible_travel",
-         {"max_hours": 2}, 50, "Cloned card",
-         ("max_hours", [1, 2, 3, 4, 6, 8])),
-    Rule("R4", "Amount spike", "r4_amount_spike",
-         {"history": 50, "multiple": 8, "floor_eur": 250}, 30, "Account takeover",
-         ("multiple", [3, 4, 6, 8, 10, 15])),
-    Rule("R5", "Night-time high-risk", "r5_night_high_risk",
-         {"from_hour": 0, "to_hour": 5, "min_eur": 150}, 35, "Account takeover"),
-    Rule("R6", "First high-risk merchant abroad", "r6_new_country_high_risk",
-         {"min_eur": 100}, 25, "Account takeover"),
+         {"micro_eur": 3, "min_micro": 3, "big_eur": 200, "lookback_s": 7200}, 60, "Card testing", (),
+         "A big online purchase (€200+) comes right after a few tiny test charges of under €3.",
+         "tiny test charges, then a big one"),
+    Rule("R3", "Two places at once", "r3_impossible_travel",
+         {"max_hours": 2}, 50, "Copied card",
+         ("max_hours", [1, 2, 3, 4, 6, 8]),
+         "The card is used in a shop abroad less than 2 hours before or after being used in Portugal.",
+         "in two countries within 2 hours"),
+    Rule("R4", "Unusually big payment", "r4_amount_spike",
+         {"history": 50, "multiple": 8, "floor_eur": 250}, 30, "Hijacked account",
+         ("multiple", [3, 4, 6, 8, 10, 15]),
+         "A payment of €250+ that is 8 times bigger than what this card usually spends.",
+         "far bigger than usual"),
+    Rule("R5", "Late-night risky shop", "r5_night_high_risk",
+         {"from_hour": 0, "to_hour": 5, "min_eur": 150}, 35, "Hijacked account", (),
+         "An online purchase of €150+ between midnight and 5am at a risky kind of shop (electronics, jewellery, gift cards or crypto).",
+         "risky shop in the middle of the night"),
+    Rule("R6", "New country, risky shop", "r6_new_country_high_risk",
+         {"min_eur": 100}, 25, "Hijacked account", (),
+         "The first time this card ever pays a risky kind of shop in that foreign country (€100+).",
+         "first risky shop in a new country"),
 ]
 BLOCK_THRESHOLD = 60    # risk score at which the payment is blocked and the customer called
 REVIEW_THRESHOLD = 35   # risk score at which it goes to the analysts' review queue

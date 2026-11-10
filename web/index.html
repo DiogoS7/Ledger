@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ledger · Card fraud & transaction analytics</title>
-<meta name="description" content="A year of card payments at a fictional Portuguese bank, analysed in Python and SQL: where the money goes, where fraud hides, and six SQL fraud rules scored against the chargebacks.">
-<meta property="og:title" content="Ledger · Card fraud & transaction analytics">
-<meta property="og:description" content="Python + SQL analysis of 435,000 card payments and six SQL fraud rules scored against real outcomes.">
+<title>Ledger · How people spend, and how to catch card fraud</title>
+<meta name="description" content="A year of card payments at Meridian Bank, a made-up Portuguese bank: how people spend, how fraudsters steal, and six simple checks that catch them. Built with Python and SQL.">
+<meta property="og:title" content="Ledger · How people spend, and how to catch card fraud">
+<meta property="og:description" content="A year of card payments, explained in plain words: where the money goes, how fraud happens and how simple checks catch it.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -14,157 +14,160 @@
 <header class="masthead">
   <div class="wrap masthead-row">
     <a class="brand" href="#top" aria-label="Ledger home">
-      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="22" rx="4"/><path d="M8 12h16M8 17h10M8 22h6"/><circle cx="23" cy="21" r="3.2"/></svg>
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="22" rx="5"/><path d="M8 12h16M8 17h10M8 22h6"/><circle cx="23" cy="21" r="3.2"/></svg>
       <span>Ledger</span>
     </a>
     <nav class="toc" aria-label="Sections">
-      <a href="#overview">Overview</a>
       <a href="#spending">Spending</a>
       <a href="#fraud">Fraud</a>
-      <a href="#rules">Rules</a>
-      <a href="#queue">Alert queue</a>
-      <a href="#data">Data</a>
+      <a href="#checks">The checks</a>
+      <a href="#try">Try it</a>
+      <a href="#examples">Examples</a>
     </nav>
     <div class="actions">
-      <button class="icon-btn" id="theme" type="button" aria-label="Switch theme" title="Switch theme">
+      <button class="icon-btn" id="theme" type="button" aria-label="Switch between light and dark" title="Light / dark">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       </button>
-      <a class="btn ghost" href="https://github.com/DiogoS7/Ledger">GitHub</a>
+      <a class="btn ghost" href="https://github.com/DiogoS7/Ledger">Code</a>
     </div>
   </div>
 </header>
 
 <main id="top">
   <section class="hero wrap">
-    <p class="eyebrow">Meridian Bank · card portfolio review · <span data-k="period"></span></p>
-    <h1>Where the money goes, and where fraud hides.</h1>
-    <p class="lede">A year of card payments at Meridian Bank, a fictional Portuguese retail bank, analysed with <b>SQL</b> and <b>Python</b>. Six fraud rules written in SQL are scored against what actually came back as fraud, then combined into one risk score with a block tier and a review tier.</p>
+    <span class="badge">Meridian Bank · one year of card payments</span>
+    <h1>Where does the money go, and how do you <em>catch a card thief?</em></h1>
+    <p class="lede">We followed a year of card payments at Meridian Bank, a made-up Portuguese bank, to see how people spend and how fraudsters try to steal. Then we built six simple checks that spot fraud the moment it happens.</p>
     <div class="kpis" id="kpis"></div>
   </section>
 
-  <section id="overview" class="wrap block">
-    <h2>Key findings</h2>
+  <section class="wrap block" aria-labelledby="h-summary">
+    <h2 id="h-summary" class="small-h">In short</h2>
     <div class="findings" id="findings"></div>
   </section>
 
   <section id="spending" class="wrap block">
     <div class="section-head">
-      <h2>Spending</h2>
-      <p>Approved card payments only. <span class="code">sql/analysis/01–05, 09</span></p>
+      <span class="step">1</span>
+      <div><h2>How people spend</h2><p>Everyday card payments from 1,500 customers.</p></div>
     </div>
     <div class="grid two">
       <figure class="card span2">
-        <figcaption><h3>Monthly card volume</h3><p>Value of approved payments per month. December and the summer holidays stand out.</p></figcaption>
-        <div class="chart" id="c-monthly" style="--h:260px"></div>
+        <figcaption><h3>Spending month by month</h3><p>December shopping and the summer holidays are the busiest times. Hover a bar for details.</p></figcaption>
+        <div class="chart" id="c-monthly" style="--h:250px"></div>
       </figure>
       <figure class="card">
-        <figcaption><h3>Where the money goes</h3><p>Share of value by merchant category.</p></figcaption>
+        <figcaption><h3>What people spend on</h3><p>Out of every €100 spent on cards.</p></figcaption>
         <div class="chart" id="c-categories"></div>
       </figure>
       <figure class="card">
-        <figcaption><h3>How people pay</h3><p>Contactless share of card-present payments, and online share of all payments.</p></figcaption>
-        <div class="chart" id="c-channels" style="--h:280px"></div>
+        <figcaption><h3>Tapping is taking over</h3><p>How many shop payments are made by tapping the card, and how many payments are made online.</p></figcaption>
+        <div class="chart" id="c-channels" style="--h:270px"></div>
       </figure>
       <figure class="card">
-        <figcaption><h3>When people pay</h3><p>Payments by weekday and hour of the day.</p></figcaption>
+        <figcaption><h3>When people pay</h3><p>Each square is one hour of the week. Darker means busier.</p></figcaption>
         <div class="chart" id="c-heatmap"></div>
       </figure>
       <figure class="card">
-        <figcaption><h3>Who spends most</h3><p>Average monthly card spend per customer, by segment.</p></figcaption>
+        <figcaption><h3>Who spends the most</h3><p>Average card spending per customer, per month.</p></figcaption>
         <div class="chart" id="c-segments"></div>
-        <h4 class="minor">Customers by home district</h4>
-        <div class="chart" id="c-districts"></div>
       </figure>
     </div>
   </section>
 
   <section id="fraud" class="wrap block">
     <div class="section-head">
-      <h2>Fraud</h2>
-      <p>Confirmed fraud = a chargeback with reason <span class="code">fraud</span>. Disputes are left out. <span class="code">sql/analysis/06–08</span></p>
+      <span class="step">2</span>
+      <div><h2>How fraud happens</h2><p>Fraud means a customer later told the bank: “that wasn't me”.</p></div>
     </div>
+    <div class="attacks" id="attacks"></div>
     <div class="grid two">
       <figure class="card span2">
-        <figcaption><h3>Fraud losses per month</h3><p>Confirmed fraud in euros. Hover a month for the rate in basis points (1 bp = 0.01% of volume).</p></figcaption>
-        <div class="chart" id="c-fraud-monthly" style="--h:240px"></div>
+        <figcaption><h3>Money stolen each month</h3><p>Hover a month to see how many cards were hit.</p></figcaption>
+        <div class="chart" id="c-fraud-monthly" style="--h:230px"></div>
       </figure>
       <figure class="card">
-        <figcaption><h3>Fraud by channel</h3><p>Share of fraud losses against share of all payments.</p></figcaption>
+        <figcaption><h3>How the money is stolen</h3><p>The orange bar is the share of stolen money. The outline is the share of all payments, for comparison.</p></figcaption>
         <div class="chart" id="c-fraud-channel"></div>
       </figure>
       <figure class="card">
-        <figcaption><h3>Time to report</h3><p>Days between the payment and the customer's chargeback.</p></figcaption>
-        <div class="chart" id="c-report" style="--h:220px"></div>
+        <figcaption><h3>How long until people notice</h3><p id="report-sub">Days between the stolen payment and the customer reporting it.</p></figcaption>
+        <div class="chart" id="c-report" style="--h:210px"></div>
       </figure>
       <figure class="card span2">
-        <figcaption><h3>Fraud hotspots</h3><p>Channel, category and geography combinations ranked by losses.</p></figcaption>
-        <div class="table-wrap"><table class="data" id="t-hotspots"></table></div>
+        <figcaption><h3>The riskiest kinds of payment</h3><p>Where the most money was stolen, and how often a payment of that kind turned out to be fraud.</p></figcaption>
+        <div class="risky" id="risky"></div>
       </figure>
     </div>
   </section>
 
-  <section id="rules" class="wrap block">
+  <section id="checks" class="wrap block">
     <div class="section-head">
-      <h2>Fraud rules</h2>
-      <p>Each rule is one SQL query with window functions. Alerts are raised on approved payments; declined attempts still count as signal. <span class="code">sql/rules/</span></p>
+      <span class="step">3</span>
+      <div><h2>How we catch it</h2><p>Six simple checks look at every payment. Each one gives points when something looks off.</p></div>
     </div>
-    <figure class="card">
-      <figcaption><h3>Rule scorecard</h3><p>Precision: share of alerts that were fraud. Recall: share of fraud transactions caught. Value caught: share of fraud euros caught. Lift: how much more likely an alert is to be fraud than a random payment.</p></figcaption>
-      <div class="table-wrap"><table class="data" id="t-scorecard"></table></div>
-    </figure>
+    <div class="checks" id="checks-list"></div>
+    <div class="howscore card">
+      <h3>Adding up the points</h3>
+      <div class="lanes">
+        <div class="lane ok"><b>Under <span data-k="review"></span> points</b><span>The payment goes through as normal.</span></div>
+        <div class="lane look"><b><span data-k="review"></span>–<span data-k="block1"></span> points</b><span>The payment goes through, and someone at the bank takes a quick look.</span></div>
+        <div class="lane stop"><b><span data-k="block"></span>+ points</b><span>The payment is stopped and the customer gets a call.</span></div>
+      </div>
+      <p class="note" id="score-note"></p>
+    </div>
+  </section>
 
-    <div class="grid two">
-      <figure class="card">
-        <figcaption><h3>Read the SQL</h3><p>The exact query behind each rule.</p></figcaption>
+  <section id="try" class="wrap block">
+    <div class="section-head">
+      <span class="step">4</span>
+      <div><h2>Try it: how strict should the bank be?</h2><p>Stricter catches more thieves, but also stops more honest customers. Move the slider to find the balance.</p></div>
+    </div>
+    <div class="card tryit">
+      <div class="slider-row">
+        <span class="end">Relaxed</span>
+        <input type="range" id="thr" min="0" max="0" step="1" aria-label="How strict the bank is">
+        <span class="end">Strict</span>
+      </div>
+      <p class="thr-caption">Stop payments that score <b id="thr-v"></b> points or more</p>
+      <div class="outcomes" id="thr-out"></div>
+      <figure class="tryfig">
+        <figcaption><p>As the bank gets stricter (to the right), it stops more stolen money (orange), but fewer of the payments it stops are really fraud (blue).</p></figcaption>
+        <div class="chart" id="c-curve" style="--h:240px"></div>
+      </figure>
+    </div>
+  </section>
+
+  <section id="examples" class="wrap block">
+    <div class="section-head">
+      <span class="step">5</span>
+      <div><h2>Real examples</h2><p>Six payments the checks flagged, and what really happened.</p></div>
+    </div>
+    <div class="examples" id="examples-list"></div>
+  </section>
+
+  <section id="behind" class="wrap block">
+    <details class="card behind">
+      <summary><span>For the technical reader</span><small>Full scorecard, tuning, SQL and how the data was made</small></summary>
+      <div class="behind-body">
+        <h3>Scorecard</h3>
+        <p class="muted">Precision: share of alerts that were fraud. Recall: share of fraud payments caught. Value caught: share of stolen euros caught. Lift: how much likelier an alert is to be fraud than a random payment.</p>
+        <div class="table-wrap"><table class="data" id="t-scorecard"></table></div>
+        <h3>Tuning one check at a time</h3>
+        <p class="muted">Precision (blue) and recall (green) as each check's main setting changes. The ringed point is the setting used.</p>
+        <div class="multiples" id="c-tuning"></div>
+        <h3>The SQL behind each check</h3>
         <div class="tabs" id="sql-tabs" role="tablist"></div>
         <pre class="sql" id="sql-view"><code></code></pre>
-      </figure>
-      <figure class="card">
-        <figcaption><h3>Pick the threshold</h3><p>Each rule adds points to a risk score. Drag to see what blocking at a given score would do.</p></figcaption>
-        <div class="slider-row">
-          <label for="thr">Block at score ≥ <b id="thr-v"></b></label>
-          <input type="range" id="thr" min="0" max="0" step="1">
-        </div>
-        <div class="mini-kpis" id="thr-kpis"></div>
-        <div class="chart" id="c-curve" style="--h:250px"></div>
-      </figure>
-    </div>
-
-    <figure class="card">
-      <figcaption><h3>Tuning a single rule</h3><p>Loosen a rule and it catches more fraud, but more of its alerts are genuine customers. The ringed point is the chosen setting.</p></figcaption>
-      <div class="multiples" id="c-tuning"></div>
-    </figure>
-  </section>
-
-  <section id="queue" class="wrap block">
-    <div class="section-head">
-      <h2>Alert queue</h2>
-      <p id="queue-sub"></p>
-    </div>
-    <figure class="card">
-      <figcaption><h3>Highest-risk alerts</h3><p>What the fraud team would open first, with the evidence each rule found. Outcome comes from the chargebacks.</p></figcaption>
-      <div class="table-wrap"><table class="data" id="t-queue"></table></div>
-    </figure>
-  </section>
-
-  <section id="data" class="wrap block">
-    <div class="section-head">
-      <h2>About the data</h2>
-      <p>Synthetic and seeded: <span class="code">python -m ledger</span> rebuilds the same database and this page.</p>
-    </div>
-    <div class="grid three">
-      <div class="card schema"><h3>customers</h3><p>age band, district, segment, joined</p></div>
-      <div class="card schema"><h3>cards</h3><p>debit or credit, issued, credit limit</p></div>
-      <div class="card schema"><h3>merchants</h3><p>MCC, category, country, online, high-risk</p></div>
-      <div class="card schema"><h3>transactions</h3><p>card, merchant, time, amount, channel, country, status</p></div>
-      <div class="card schema"><h3>chargebacks</h3><p>reported on, reason: fraud or dispute</p></div>
-      <div class="card schema muted-card"><h3>Planted attacks</h3><p>card testing, cloned cards used abroad, night-time account takeovers</p></div>
-    </div>
+        <h3>About the data</h3>
+        <p class="muted">All data is synthetic and seeded, so <span class="code">python -m ledger</span> always rebuilds the same SQLite database (customers, cards, merchants, transactions, chargebacks) and this page. Three kinds of attack are planted in it, and every approved fraudulent payment gets a chargeback with reason <span class="code">fraud</span>, which is what the checks are scored against. Built with Python, pandas, SQLite and plain JavaScript charts.</p>
+      </div>
+    </details>
   </section>
 </main>
 
 <footer class="wrap foot">
-  <p>Ledger <span data-k="version"></span> · Meridian Bank and every customer and merchant in it are fictional. Built by <a href="https://diogos7.github.io">Diogo Santos</a>.</p>
+  <p>Ledger <span data-k="version"></span> · Meridian Bank, its customers and its shops are all made up. Built by <a href="https://diogos7.github.io">Diogo Santos</a>.</p>
 </footer>
 
 <div class="tooltip" id="tip" role="status" aria-live="polite" hidden></div>

@@ -87,29 +87,57 @@ def build_data(db_path: Path = DB_PATH) -> dict:
     fp_cats = [c.lower() for c in fp.index[:3]]
     fp_share = fp.iloc[:3].sum() / fp.sum()
 
+    online_eur = chan.set_index("channel").fraud_eur
+    contactless_fraud = online_eur.get("Contactless", 0)
+    per_day = review.false_positives / 365
     findings = [
-        {"title": "Fraud lives online and abroad",
-         "text": f"{fraud_online:.0%} of fraud losses came through online payments and {fraud_foreign:.0%} "
-                 f"from foreign merchants, while only {foreign_share:.1%} of all transactions happen abroad."},
-        {"title": "Two tiers beat one big net",
-         "text": f"Blocking at a risk score of {R.BLOCK_THRESHOLD} stops {block.value_recall:.0%} of fraud value "
-                 f"with {block.precision:.0%} precision. Adding a review queue from {R.REVIEW_THRESHOLD} lifts that to "
-                 f"{review.value_recall:.0%} of value, at the cost of {int(review.false_positives)} genuine payments to check."},
-        {"title": "Single rules are noisy",
-         "text": f"On its own, the amount-spike rule catches the most fraud value but only {rule_table.set_index('code').loc['R4', 'precision']:.1%} "
-                 f"of its alerts are fraud. Combined with the other signals it stops being a false-alarm machine."},
-        {"title": "Customers notice late",
-         "text": f"Half of the fraud is reported {median_days:.0f} days or more after the payment, which is why "
-                 f"rules have to act at the moment of payment rather than wait for chargebacks."},
-        {"title": "Contactless keeps growing",
-         "text": f"Contactless went from {first.contactless_pct:.0f}% to {last.contactless_pct:.0f}% of card-present payments "
-                 f"between {first.label} and {last.label}. Spending peaked in {peak.label} at €{peak.volume_eur/1e6:.2f}M."},
-        {"title": "False alarms come from big tickets",
-         "text": f"{top_cat.category} is the biggest category by value ({top_cat.pct_of_volume:.0f}%), but genuine payments flagged for review "
-                 f"are mostly {fp_cats[0]}, {fp_cats[1]} and {fp_cats[2]} ({fp_share:.0%} of them): big one-off purchases, and travellers paying abroad soon after a payment at home."},
+        {"icon": "laptop", "title": "Most fraud happens online",
+         "text": f"€{fraud_online * 100:.0f} of every €100 stolen was taken through online shopping. "
+                 + ("Tapping a card in a shop: €0." if contactless_fraud == 0 else "")},
+        {"icon": "globe", "title": "Fraudsters spend abroad",
+         "text": f"{fraud_foreign:.0%} of the stolen money went to shops and websites outside Portugal, "
+                 f"even though only {foreign_share * 100:.0f} in 100 payments happen abroad."},
+        {"icon": "shield", "title": "Simple checks stop most of it",
+         "text": f"Six simple checks working together stop {block.value_recall:.0%} of the stolen money automatically, "
+                 f"and {block.precision * 10:.0f} out of 10 payments they stop really are fraud."},
+        {"icon": "eye", "title": "A quick human look catches more",
+         "text": f"If staff also look at the less obvious cases, {review.value_recall:.0%} of the stolen money is caught. "
+                 f"That means checking {'less than one' if per_day < 1 else f'about {per_day:.0f}'} honest payment a day."},
+        {"icon": "clock", "title": "People notice too late",
+         "text": f"Half of the victims only reported the fraud {median_days:.0f} days or more after it happened, "
+                 f"so the bank has to spot it the moment the payment is made."},
+        {"icon": "tap", "title": "Tapping is taking over",
+         "text": f"Paying by tapping the card went from {first.contactless_pct:.0f}% to {last.contactless_pct:.0f}% "
+                 f"of payments in shops in one year."},
     ]
 
+    # a handful of real examples, one of each kind, told in plain words
+    reasons = {r.code: r.reason for r in R.RULES}
+    def pick(mask):
+        rows = queue[mask]
+        return rows.iloc[0] if len(rows) else None
+    has = lambda code: queue.rules.str.contains(code)  # noqa: E731
+    picks = [
+        ("Card testing", pick((queue.is_fraud == 1) & has("R2"))),
+        ("Copied card", pick((queue.is_fraud == 1) & has("R3"))),
+        ("Hijacked account", pick((queue.is_fraud == 1) & has("R5") & ~has("R2"))),
+        ("Caught by a person", pick((queue.is_fraud == 1) & (queue.action == "Review"))),
+        ("False alarm", pick((queue.is_fraud == 0) & has("R3"))),
+        ("False alarm", pick((queue.is_fraud == 0) & (queue.action == "Block"))),
+    ]
+    examples = []
+    for kind, r in picks:
+        if r is None:
+            continue
+        examples.append({
+            "kind": kind, "ts": r.ts, "amount_eur": float(r.amount_eur), "merchant": r.merchant,
+            "category": r.category, "channel": r.channel, "country": r.country,
+            "score": int(r.risk_score), "action": r.action, "is_fraud": int(r.is_fraud),
+            "reasons": [reasons[c] for c in r.rules.split(" + ")],
+        })
+
     rule_meta = [{"code": r.code, "name": r.name, "catches": r.catches, "weight": r.weight,
+                  "plain": r.plain, "reason": r.reason,
                   "params": r.params, "sql": sql_text(f"rules/{r.file}"), "file": f"sql/rules/{r.file}.sql"}
                  for r in R.RULES]
 
@@ -135,7 +163,8 @@ def build_data(db_path: Path = DB_PATH) -> dict:
         "curve": _records(curve),
         "tuning": _records(tuning),
         "queue": _records(sample[["txn_id", "ts", "amount_eur", "channel", "country", "category",
-                                  "risk_score", "rules", "evidence", "action", "outcome"]]),
+                                  "merchant", "risk_score", "rules", "evidence", "action", "outcome"]]),
+        "examples": examples,
         "queue_size": {"block": int((queue.action == "Block").sum()), "review": int((queue.action == "Review").sum())},
     }
 

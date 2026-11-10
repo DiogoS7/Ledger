@@ -1,4 +1,4 @@
--- R5 · Night-time high-risk purchase
+-- R5 · Late-night risky shop
 -- Account takeovers often run while the customer sleeps.
 -- Flag online payments of at least :min_eur at high-risk merchants
 -- (electronics, jewellery, gift cards, crypto) between :from_hour and :to_hour.

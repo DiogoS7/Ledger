@@ -269,125 +269,214 @@ function highlight(code, sql) {
   }
 }
 
+/* ======================================================= plain-language helpers */
+const ICONS = {
+  card: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/>',
+  coins: '<circle cx="9" cy="9" r="5"/><path d="M14.5 5.5a5 5 0 1 1-1 9.9M9 7v4M7.5 9h3"/>',
+  alert: '<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+  percent: '<path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
+  shield: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  laptop: '<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19h20"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  tap: '<path d="M9 11V5a2 2 0 0 1 4 0v6M13 10a2 2 0 0 1 4 0v3a7 7 0 0 1-7 7 6 6 0 0 1-5-3l-2-4a1.6 1.6 0 0 1 2.7-1.6L9 14"/>',
+  test: '<path d="M4 7h4M4 12h7M4 17h4"/><path d="M15 6l5 5-5 5"/>',
+  copy: '<rect x="8" y="8" width="13" height="10" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+};
+function icon(name) {
+  const d = el("span", { class: "ic", "aria-hidden": "true" });
+  const s = document.createElementNS(NS, "svg"); s.setAttribute("viewBox", "0 0 24 24");
+  s.innerHTML = ICONS[name] || ICONS.card;   // static markup from this file, not data
+  d.appendChild(s); return d;
+}
+const COUNTRY = { PT: "Portugal", ES: "Spain", FR: "France", GB: "the UK", IT: "Italy", DE: "Germany", NL: "the Netherlands", BR: "Brazil", US: "the US", MA: "Morocco", CN: "China", LT: "Lithuania", CY: "Cyprus" };
+const HOW = { "Chip & PIN": "Card put in a machine", Contactless: "Card tapped", Online: "Online", ATM: "Cash machine" };
+const CAT = { "ATM cash": "Cash withdrawals", "Gift cards & vouchers": "Gift cards", "Crypto exchange": "Crypto", "Streaming & subscriptions": "Subscriptions", "Utilities & telecom": "Bills", "Online marketplace": "Online shops", "Travel & airlines": "Flights & travel" };
+const cat = c => CAT[c] || c;
+const oneIn = p => p >= 0.095 ? `${Math.round(p * 10)} in 10` : `${Math.max(1, Math.round(p * 100))} in 100`;
+const rate = n => n >= 365 ? `about ${Math.round(n / 365)} a day` : n >= 52 ? `about ${Math.round(n / 52)} a week` : n >= 12 ? `about ${Math.round(n / 12)} a month` : "less than one a month";
+const when = ts => new Date(ts.replace(" ", "T")).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+const ATTACKS = [
+  { icon: "test", title: "Card testing", sub: "A thief checks that stolen card details work.", codes: ["R1", "R2"],
+    steps: ["A string of tiny online charges, often under €3, minutes apart", "Some are declined, some go through", "Once one works, a big online purchase follows"] },
+  { icon: "copy", title: "Copied card", sub: "A copy of the card is used abroad.", codes: ["R3"],
+    steps: ["The real customer is still shopping in Portugal", "A copy of their card takes cash or buys jewellery in another country", "All on the same day, sometimes within an hour"] },
+  { icon: "moon", title: "Hijacked account", sub: "Someone gets into the card details online.", codes: ["R4", "R5", "R6"],
+    steps: ["In the middle of the night, while the customer sleeps", "Several big purchases at risky shops: electronics, gift cards, crypto", "Usually from websites abroad"] },
+];
+
 /* ======================================================= render */
-let D;
+let D, techDone = false;
 function render() {
-  const C1 = css("--series-1"), C2 = css("--series-2"), C3 = css("--series-3");
-  const k = D.kpi;
+  const C1 = css("--series-1"), C2 = css("--series-2");
+  const k = D.kpi, sc = Object.fromEntries(D.scorecard.map(r => [r.code, r]));
+  const meta = Object.fromEntries(D.rules.map(r => [r.code, r]));
+  const block = sc.BLOCK, review = sc.REVIEW;
 
-  document.querySelectorAll('[data-k="period"]').forEach(n => n.textContent = `${new Date(k.first_day).toLocaleDateString("en-GB", { month: "short", year: "numeric" })} – ${new Date(k.last_day).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`);
   document.querySelectorAll('[data-k="version"]').forEach(n => n.textContent = "v" + D.version);
+  document.querySelectorAll('[data-k="review"]').forEach(n => n.textContent = D.thresholds.review);
+  document.querySelectorAll('[data-k="block"]').forEach(n => n.textContent = D.thresholds.block);
+  document.querySelectorAll('[data-k="block1"]').forEach(n => n.textContent = D.thresholds.block - 1);
 
-  /* KPIs */
+  /* headline numbers */
   const kp = $("#kpis"); kp.replaceChildren();
-  const block = D.scorecard.find(r => r.code === "BLOCK"), review = D.scorecard.find(r => r.code === "REVIEW");
-  for (const [v, l, s, cls] of [
-    [int(k.approved_txns), "card payments", `${int(k.customers)} customers · ${int(k.cards)} cards`],
-    [eurC(k.volume_eur), "spent on cards", `average ticket ${eur2(k.avg_ticket_eur)}`],
-    [eurC(k.fraud_eur), "lost to fraud", `${int(k.fraud_txns)} payments on ${int(k.cards_hit)} cards`, "fraud"],
-    [(10000 * k.fraud_eur / k.volume_eur).toFixed(0) + " bp", "fraud rate", "of card volume"],
-    [pct(block.value_recall), "fraud value blocked", `at ${pct(block.precision)} precision`],
-    [pct(review.value_recall), "with the review queue", `${int(review.false_positives)} genuine payments checked`],
+  for (const [ic, v, l, s, cls] of [
+    ["card", int(k.approved_txns), "card payments", `by ${int(k.customers)} customers in one year`],
+    ["coins", eurC(k.volume_eur), "spent", `about ${eur(k.avg_ticket_eur)} per payment`],
+    ["alert", eurC(k.fraud_eur), "stolen by fraudsters", `from ${int(k.cards_hit)} customers' cards`, "fraud"],
+    ["percent", "€" + (1000 * k.fraud_eur / k.volume_eur).toFixed(0), "lost in every €1,000", "spent on cards", "fraud"],
+    ["shield", pct(block.value_recall), "of stolen money stopped", "automatically, by six simple checks", "good"],
+    ["eye", pct(review.value_recall), "with a quick human check", "on the less obvious cases", "good"],
   ]) {
     const d = el("div", { class: "kpi " + (cls || "") });
-    d.append(el("div", { class: "v" }, v), el("div", { class: "l" }, l), el("div", { class: "s" }, s));
+    d.append(icon(ic), el("div", { class: "v" }, v), el("div", { class: "l" }, l), el("div", { class: "s" }, s));
     kp.appendChild(d);
   }
 
-  /* findings */
   const fi = $("#findings"); fi.replaceChildren();
-  for (const f of D.findings) { const c = el("article", { class: "finding" }); c.append(el("h3", {}, f.title), el("p", {}, f.text)); fi.appendChild(c); }
+  for (const f of D.findings) { const c = el("article", { class: "finding" }); c.append(icon(f.icon), el("h3", {}, f.title), el("p", {}, f.text)); fi.appendChild(c); }
 
-  /* spending */
+  /* 1 · spending */
   barChart($("#c-monthly"), D.monthly, {
     y: r => r.volume_eur, color: C1, fmt: eurC, label: r => r.label,
-    tip: r => [{ color: C1, value: eur(r.volume_eur), label: "volume" }, { value: int(r.txns), label: "payments" }, { value: eur2(r.avg_ticket_eur), label: "average ticket" }, { value: int(r.active_cards), label: "active cards" }],
+    tip: r => [{ color: C1, value: eur(r.volume_eur), label: "spent" }, { value: int(r.txns), label: "payments" }, { value: eur2(r.avg_ticket_eur), label: "per payment on average" }],
   });
-  const totalTx = D.categories.reduce((a, c) => a + c.txns, 0);
-  hbars($("#c-categories"), D.categories.slice(0, 10).map(c => ({
-    name: c.category, value: c.pct_of_volume / 100,
-    tip: [{ color: C1, value: pct(c.pct_of_volume / 100, 1), label: "of value" }, { value: pct(c.txns / totalTx, 1), label: "of payments" }, { value: eur2(c.avg_ticket_eur), label: "average ticket" }],
-  })), v => pct(v, 1), { color: C1 });
+  hbars($("#c-categories"), D.categories.slice(0, 8).map(c => ({
+    name: cat(c.category), value: c.pct_of_volume,
+    tip: [{ color: C1, value: "€" + c.pct_of_volume.toFixed(0), label: "of every €100" }, { value: eur2(c.avg_ticket_eur), label: "per payment on average" }],
+  })), v => "€" + v.toFixed(0), { color: C1 });
   const ch = $("#c-channels");
   lineChart(ch, D.channels.map(r => r.label), [
-    { name: "Contactless", color: C1, values: D.channels.map(r => r.contactless_pct / 100) },
+    { name: "Tapped", color: C1, values: D.channels.map(r => r.contactless_pct / 100) },
     { name: "Online", color: C2, values: D.channels.map(r => r.online_pct / 100) },
-  ], { fmt: v => pct(v), fmtTip: v => pct(v, 1), yMax: 1, right: 84 });
-  legend(ch, [{ name: "Contactless (of card-present)", color: C1 }, { name: "Online (of all payments)", color: C2 }]);
+  ], { fmt: v => pct(v), yMax: 1, right: 64 });
+  legend(ch, [{ name: "Shop payments made by tapping", color: C1 }, { name: "All payments made online", color: C2 }]);
   heatmap($("#c-heatmap"), D.heatmap);
-  hbars($("#c-segments"), D.segments.map(s => ({ name: s.segment, value: s.avg_monthly_spend_eur })), eur, { color: C1 });
-  hbars($("#c-districts"), D.districts.slice(0, 6).map(d => ({ name: d.district, value: d.customers, tip: [{ value: int(d.customers), label: "customers" }, { value: eur(d.avg_yearly_spend_eur), label: "average yearly spend" }] })), int, { color: C1 });
+  hbars($("#c-segments"), D.segments.map(s => ({ name: { Premium: "Premium customers", Business: "Business owners", Everyday: "Everyday customers", Student: "Students" }[s.segment] || s.segment, value: s.avg_monthly_spend_eur })), eur, { color: C1 });
 
-  /* fraud */
+  /* 2 · fraud */
+  const at = $("#attacks"); at.replaceChildren();
+  for (const a of ATTACKS) {
+    const c = el("article", { class: "attack" });
+    const ol = el("ol"); a.steps.forEach(s => ol.appendChild(el("li", {}, s)));
+    const share = el("div", { class: "share" });
+    share.append(document.createTextNode("Spotted by: "), el("b", {}, a.codes.map(x => meta[x].name).join(", ")));
+    c.append(icon(a.icon), el("h3", {}, a.title), el("p", { class: "sub" }, a.sub), ol, share);
+    at.appendChild(c);
+  }
   barChart($("#c-fraud-monthly"), D.fraud_monthly, {
     y: r => r.fraud_eur, color: C2, fmt: eurC, label: r => r.label,
-    tip: r => [{ color: C2, value: eur(r.fraud_eur), label: "fraud" }, { value: r.fraud_bps.toFixed(0) + " bp", label: "of volume" }, { value: int(r.fraud_txns), label: "fraud payments" }, { value: int(r.cards_hit), label: "cards hit" }],
+    tip: r => [{ color: C2, value: eur(r.fraud_eur), label: "stolen" }, { value: int(r.cards_hit), label: "cards hit" }, { value: "€" + (r.fraud_bps / 10).toFixed(1), label: "per €1,000 spent" }],
   });
   const fcTot = D.fraud_by_channel.reduce((a, c) => a + c.fraud_eur, 0), txTot = D.fraud_by_channel.reduce((a, c) => a + c.txns, 0);
   const fc = $("#c-fraud-channel");
   hbars(fc, [...D.fraud_by_channel].sort((a, b) => b.fraud_eur - a.fraud_eur).map(c => ({
-    name: c.channel, value: c.fraud_eur / fcTot, ghost: c.txns / txTot,
-    tip: [{ color: C2, value: pct(c.fraud_eur / fcTot), label: "of fraud losses" }, { value: pct(c.txns / txTot), label: "of payments" }, { value: eur(c.fraud_eur), label: "lost" }],
+    name: HOW[c.channel] || c.channel, value: c.fraud_eur / fcTot, ghost: c.txns / txTot,
+    tip: [{ color: C2, value: pct(c.fraud_eur / fcTot), label: "of the stolen money" }, { value: pct(c.txns / txTot), label: "of all payments" }],
   })), v => pct(v), { color: C2 });
-  legend(fc, [{ name: "Share of fraud losses", color: C2, box: true }, { name: "Share of payments", ghost: true, box: true }]);
+  legend(fc, [{ name: "Stolen money", color: C2, box: true }, { name: "All payments", ghost: true, box: true }]);
   const tr = D.time_to_report;
+  const all = tr.flatMap(r => Array(r.fraud_txns).fill(r.days_to_report)).sort((a, b) => a - b);
+  $("#report-sub").textContent = `Half of the victims took ${all[Math.floor(all.length / 2)]} days or more to report it.`;
   const days = Array.from({ length: Math.max(...tr.map(r => r.days_to_report)) }, (_, i) => tr.find(r => r.days_to_report === i + 1) || { days_to_report: i + 1, fraud_txns: 0, fraud_eur: 0 });
   barChart($("#c-report"), days, {
-    y: r => r.fraud_txns, color: C2, fmt: int, label: r => `${r.days_to_report} day${r.days_to_report > 1 ? "s" : ""} later`, xLabel: r => r.days_to_report + "d",
-    tip: r => [{ color: C2, value: int(r.fraud_txns), label: "fraud payments" }, { value: eur(r.fraud_eur), label: "value" }],
+    y: r => r.fraud_txns, color: C2, fmt: int, label: r => `Reported after ${r.days_to_report} day${r.days_to_report > 1 ? "s" : ""}`, xLabel: r => String(r.days_to_report),
+    tip: r => [{ color: C2, value: int(r.fraud_txns), label: "stolen payments" }],
   });
-  const hmax = Math.max(...D.hotspots.map(h => h.fraud_eur));
-  table($("#t-hotspots"), [
-    { h: "Channel", v: r => r.channel }, { h: "Category", v: r => r.category }, { h: "Where", v: r => r.geography },
-    { h: "Payments", num: 1, v: r => int(r.txns) }, { h: "Fraud payments", num: 1, v: r => int(r.fraud_txns) },
-    { h: "Fraud rate", num: 1, v: r => (r.fraud_bps / 100).toFixed(1) + "%" },
-    { h: "Lost", num: 1, v: r => barCell(r.fraud_eur, hmax, eur(r.fraud_eur), C2) },
-  ], D.hotspots);
+  const rk = $("#risky"); rk.replaceChildren();
+  for (const h of D.hotspots.slice(0, 6)) {
+    const c = el("div", { class: "risk" });
+    c.append(el("div", { class: "what" }, h.channel === "ATM" ? "Cash withdrawals" : `${cat(h.category)}, ${(HOW[h.channel] || h.channel).toLowerCase()}`),
+      el("div", { class: "how" }, h.geography === "Foreign" ? "abroad" : "in Portugal"),
+      el("div", { class: "lost" }, eur(h.fraud_eur) + " stolen"),
+      el("div", { class: "rate" }, h.txns / h.fraud_txns < 1.5 ? "nearly every one of these payments was fraud" : `1 in ${Math.round(h.txns / h.fraud_txns)} of these payments was fraud`));
+    rk.appendChild(c);
+  }
 
-  /* rules */
+  /* 3 · checks */
+  const cl = $("#checks-list"); cl.replaceChildren();
+  for (const r of D.rules) {
+    const s = sc[r.code];
+    const c = el("article", { class: "check" });
+    const top = el("div", { class: "top" }); top.append(el("span", { class: "tag" }, r.catches), el("span", { class: "pts" }, `+${r.weight} points`));
+    const st = el("div", { class: "stats" });
+    const a = el("div"); a.append(el("b", {}, oneIn(s.precision)), el("span", {}, "alerts are real fraud"));
+    const b = el("div"); b.append(el("b", {}, eurC(s.fraud_eur_caught)), el("span", {}, "of stolen money spotted"));
+    st.append(a, b);
+    c.append(top, el("h3", {}, r.name), el("p", { class: "rule" }, r.plain), st);
+    cl.appendChild(c);
+  }
+  const top = D.examples[0];
+  $("#score-note").textContent = top ? `A payment that trips several checks adds up fast. The ${eur(top.amount_eur)} gift-card purchase in the examples below tripped ${top.reasons.length} checks and scored ${top.score} points. One check on its own is often not enough: the "${meta.R4.name}" check spots the most stolen money, but only ${oneIn(sc.R4.precision)} of its alerts are real fraud.` : "";
+
+  /* 4 · try it (strict = lower threshold = right side) */
+  const curve = [...D.curve].reverse(), slider = $("#thr");
+  slider.max = curve.length - 1;
+  if (!slider.dataset.init) { slider.value = curve.findIndex(c => c.threshold === D.thresholds.block); slider.dataset.init = 1; }
+  const drawTry = () => {
+    const c = curve[slider.value];
+    $("#thr-v").textContent = c.threshold;
+    const out = $("#thr-out"); out.replaceChildren();
+    const o1 = el("div", { class: "outcome o-money" });
+    o1.append(el("div", { class: "big" }, pct(c.value_recall)), el("p", {}, `of the stolen money is stopped (${eurC(c.fraud_eur_caught)} of ${eurC(k.fraud_eur)})`));
+    const o2 = el("div", { class: "outcome o-right" });
+    const right = Math.round(c.precision * 10);
+    const dots = el("div", { class: "dots", "aria-hidden": "true" });
+    for (let i = 0; i < 10; i++) dots.appendChild(el("i", i < right ? {} : { class: "off" }));
+    o2.append(el("div", { class: "big" }, `${right} in 10`), el("p", {}, "stopped payments are really fraud"), dots);
+    const o3 = el("div", { class: "outcome" });
+    o3.append(el("div", { class: "big" }, int(c.false_positives)), el("p", {}, `honest payments stopped in a year (${rate(c.false_positives)})`));
+    out.append(o1, o2, o3);
+    const host = $("#c-curve");
+    lineChart(host, curve.map(c => String(c.threshold)), [
+      { name: "Money stopped", color: C2, values: curve.map(c => c.value_recall) },
+      { name: "Really fraud", color: C1, values: curve.map(c => c.precision) },
+    ], { fmt: v => pct(v), yMax: 1, right: 100, headPrefix: "Stop at ", fmtTip: v => pct(v), markers: [{ i: +slider.value, label: "you are here" }] });
+    legend(host, [{ name: "Share of stolen money stopped", color: C2 }, { name: "Share of stopped payments that are really fraud", color: C1 }]);
+  };
+  slider.oninput = drawTry; drawTry();
+
+  /* 5 · examples */
+  const ex = $("#examples-list"); ex.replaceChildren();
+  for (const e of D.examples) {
+    const c = el("article", { class: "ex" });
+    const ul = el("ul"); e.reasons.forEach(r => ul.appendChild(el("li", {}, r.charAt(0).toUpperCase() + r.slice(1))));
+    const v = el("div", { class: "verdict" });
+    v.append(el("span", { class: "chip " + (e.action === "Block" ? "stop" : "look") }, e.action === "Block" ? `Stopped · ${e.score} points` : `Checked by a person · ${e.score} points`),
+      el("span", { class: "chip " + (e.is_fraud ? "fraud" : "honest") }, e.is_fraud ? "✓ It was fraud" : "✗ False alarm: it was the customer"));
+    c.append(el("div", { class: "kind" }, e.kind), el("div", { class: "amt" }, eur2(e.amount_eur)),
+      el("div", { class: "where" }, `${cat(e.category)} · ${(HOW[e.channel] || e.channel).toLowerCase()} · ${COUNTRY[e.country] || e.country} · ${when(e.ts)}`),
+      ul, v);
+    ex.appendChild(c);
+  }
+
+  if ($("details.behind").open) renderTech();
+}
+
+/* technical section: only drawn once it is opened (charts need a visible width) */
+function renderTech() {
+  const C1 = css("--series-1"), C3 = css("--series-3");
   const meta = Object.fromEntries(D.rules.map(r => [r.code, r]));
   table($("#t-scorecard"), [
-    { h: "", v: r => r.code.length === 2 ? r.code : "" }, { h: "Rule", v: r => r.rule }, { h: "Aimed at", v: r => r.catches },
+    { h: "", v: r => r.code.length === 2 ? r.code : "" }, { h: "Check", v: r => r.rule }, { h: "Aimed at", v: r => r.catches },
     { h: "Points", num: 1, v: r => r.weight ?? "" }, { h: "Alerts", num: 1, v: r => int(r.alerts) },
     { h: "Precision", num: 1, v: r => pct(r.precision, 1) }, { h: "Recall", num: 1, v: r => pct(r.recall, 1) },
     { h: "Value caught", num: 1, v: r => barCell(r.value_recall, 1, pct(r.value_recall)) },
     { h: "Lift", num: 1, v: r => int(r.lift) + "×" },
   ], D.scorecard, r => r.code.length > 2 ? "total" : "");
-
   const tabs = $("#sql-tabs"); tabs.replaceChildren();
   const show = code => {
     tabs.querySelectorAll("button").forEach(b => b.setAttribute("aria-selected", b.dataset.code === code));
     highlight($("#sql-view code"), `-- ${meta[code].file}\n` + meta[code].sql);
   };
   for (const r of D.rules) {
-    const b = el("button", { type: "button", role: "tab", "data-code": r.code, title: r.name }, `${r.code} · ${r.name}`);
+    const b = el("button", { type: "button", role: "tab", "data-code": r.code }, `${r.code} · ${r.name}`);
     b.addEventListener("click", () => show(r.code)); tabs.appendChild(b);
   }
   show(D.rules[0].code);
-
-  /* threshold explorer */
-  const curve = D.curve, slider = $("#thr");
-  slider.max = curve.length - 1;
-  if (!slider.dataset.init) { slider.value = curve.findIndex(c => c.threshold === D.thresholds.block); slider.dataset.init = 1; }
-  const drawCurve = () => {
-    const c = curve[slider.value];
-    $("#thr-v").textContent = c.threshold;
-    const mk = $("#thr-kpis"); mk.replaceChildren();
-    for (const [v, l] of [[pct(c.precision), "precision"], [pct(c.value_recall), "fraud value caught"], [int(c.alerts), "alerts in the year"], [int(c.false_positives), "genuine payments stopped"]]) {
-      const d = el("div"); d.append(el("b", {}, v), el("span", {}, l)); mk.appendChild(d);
-    }
-    const host = $("#c-curve");
-    lineChart(host, curve.map(c => String(c.threshold)), [
-      { name: "Precision", color: C1, values: curve.map(c => c.precision) },
-      { name: "Value caught", color: C2, values: curve.map(c => c.value_recall) },
-      { name: "Recall", color: C3, values: curve.map(c => c.recall) },
-    ], { fmt: v => pct(v), yMax: 1, right: 92, headPrefix: "Score ≥ ", dots: true,
-         markers: [{ i: +slider.value, label: "your pick" }] });
-    legend(host, [{ name: "Precision", color: C1 }, { name: "Value caught", color: C2 }, { name: "Recall", color: C3 }]);
-  };
-  slider.oninput = drawCurve; drawCurve();
-
-  /* tuning small multiples */
   const tm = $("#c-tuning"); tm.replaceChildren();
   const byRule = {};
   for (const t of D.tuning) (byRule[t.code] ||= []).push(t);
@@ -395,25 +484,13 @@ function render() {
   for (const [code, rows] of Object.entries(byRule)) {
     const box = el("div"); box.append(el("h4", {}, `${code} · ${meta[code].name}`), el("p", {}, paramText[rows[0].param] || rows[0].param));
     const host = el("div", { class: "chart" }); host.style.setProperty("--h", "190px"); box.appendChild(host); tm.appendChild(box);
-    requestAnimationFrame(() => {
-      lineChart(host, rows.map(r => String(r.value)), [
-        { name: "Precision", color: C1, values: rows.map(r => r.precision) },
-        { name: "Recall", color: C3, values: rows.map(r => r.recall) },
-      ], { fmt: v => pct(v), yMax: 1, right: 66, height: 190, dots: true, ring: rows.findIndex(r => r.is_default), headPrefix: rows[0].param + " = " });
-    });
+    lineChart(host, rows.map(r => String(r.value)), [
+      { name: "Precision", color: C1, values: rows.map(r => r.precision) },
+      { name: "Recall", color: C3, values: rows.map(r => r.recall) },
+    ], { fmt: v => pct(v), yMax: 1, right: 66, height: 190, dots: true, ring: rows.findIndex(r => r.is_default), headPrefix: rows[0].param + " = " });
   }
-
-  /* queue */
-  $("#queue-sub").textContent = `${int(D.queue_size.block)} payments blocked (score ≥ ${D.thresholds.block}) and ${int(D.queue_size.review)} sent for review (score ${D.thresholds.review}–${D.thresholds.block - 1}) over the year.`;
-  table($("#t-queue"), [
-    { h: "When", cls: "nowrap", v: r => r.ts.slice(0, 16) }, { h: "Amount", num: 1, v: r => eur2(r.amount_eur) },
-    { h: "Where", v: r => `${r.category} · ${r.channel} · ${r.country}` },
-    { h: "Score", num: 1, v: r => r.risk_score },
-    { h: "Evidence", cls: "ev", v: r => r.evidence },
-    { h: "Action", v: r => el("span", { class: "pill " + (r.action === "Block" ? "block" : "") }, r.action) },
-    { h: "Outcome", v: r => el("span", { class: "pill " + r.outcome.toLowerCase() }, r.outcome) },
-  ], D.queue);
 }
+$("details.behind").addEventListener("toggle", e => { if (e.target.open && D) renderTech(); });
 
 /* ---------- theme, nav, boot ---------- */
 const root = document.documentElement;
