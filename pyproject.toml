@@ -1,0 +1,10 @@
+[project]
+name = "ledger"
+version = "1.0.0"
+description = "Card transaction and fraud analytics in Python and SQL"
+requires-python = ">=3.10"
+dependencies = ["pandas>=2.0", "numpy>=1.24"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]

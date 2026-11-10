@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledger · Card fraud & transaction analytics</title>
+<meta name="description" content="A year of card payments at a fictional Portuguese bank, analysed in Python and SQL: where the money goes, where fraud hides, and six SQL fraud rules scored against the chargebacks.">
+<meta property="og:title" content="Ledger · Card fraud & transaction analytics">
+<meta property="og:description" content="Python + SQL analysis of 435,000 card payments and six SQL fraud rules scored against real outcomes.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap masthead-row">
+    <a class="brand" href="#top" aria-label="Ledger home">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="22" rx="4"/><path d="M8 12h16M8 17h10M8 22h6"/><circle cx="23" cy="21" r="3.2"/></svg>
+      <span>Ledger</span>
+    </a>
+    <nav class="toc" aria-label="Sections">
+      <a href="#overview">Overview</a>
+      <a href="#spending">Spending</a>
+      <a href="#fraud">Fraud</a>
+      <a href="#rules">Rules</a>
+      <a href="#queue">Alert queue</a>
+      <a href="#data">Data</a>
+    </nav>
+    <div class="actions">
+      <button class="icon-btn" id="theme" type="button" aria-label="Switch theme" title="Switch theme">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <a class="btn ghost" href="https://github.com/DiogoS7/Ledger">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero wrap">
+    <p class="eyebrow">Banco Marés · card portfolio review · <span data-k="period"></span></p>
+    <h1>Where the money goes, and where fraud hides.</h1>
+    <p class="lede">A year of card payments at a fictional Portuguese retail bank, analysed with <b>SQL</b> and <b>Python</b>. Six fraud rules written in SQL are scored against what actually came back as fraud, then combined into one risk score with a block tier and a review tier.</p>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section id="overview" class="wrap block">
+    <h2>Key findings</h2>
+    <div class="findings" id="findings"></div>
+  </section>
+
+  <section id="spending" class="wrap block">
+    <div class="section-head">
+      <h2>Spending</h2>
+      <p>Approved card payments only. <span class="code">sql/analysis/01–05, 09</span></p>
+    </div>
+    <div class="grid two">
+      <figure class="card span2">
+        <figcaption><h3>Monthly card volume</h3><p>Value of approved payments per month. December and the summer holidays stand out.</p></figcaption>
+        <div class="chart" id="c-monthly" style="--h:260px"></div>
+      </figure>
+      <figure class="card">
+        <figcaption><h3>Where the money goes</h3><p>Share of value by merchant category.</p></figcaption>
+        <div class="chart" id="c-categories"></div>
+      </figure>
+      <figure class="card">
+        <figcaption><h3>How people pay</h3><p>Contactless share of card-present payments, and online share of all payments.</p></figcaption>
+        <div class="chart" id="c-channels" style="--h:280px"></div>
+      </figure>
+      <figure class="card">
+        <figcaption><h3>When people pay</h3><p>Payments by weekday and hour of the day.</p></figcaption>
+        <div class="chart" id="c-heatmap"></div>
+      </figure>
+      <figure class="card">
+        <figcaption><h3>Who spends most</h3><p>Average monthly card spend per customer, by segment.</p></figcaption>
+        <div class="chart" id="c-segments"></div>
+        <h4 class="minor">Customers by home district</h4>
+        <div class="chart" id="c-districts"></div>
+      </figure>
+    </div>
+  </section>
+
+  <section id="fraud" class="wrap block">
+    <div class="section-head">
+      <h2>Fraud</h2>
+      <p>Confirmed fraud = a chargeback with reason <span class="code">fraud</span>. Disputes are left out. <span class="code">sql/analysis/06–08</span></p>
+    </div>
+    <div class="grid two">
+      <figure class="card span2">
+        <figcaption><h3>Fraud losses per month</h3><p>Confirmed fraud in euros. Hover a month for the rate in basis points (1 bp = 0.01% of volume).</p></figcaption>
+        <div class="chart" id="c-fraud-monthly" style="--h:240px"></div>
+      </figure>
+      <figure class="card">
+        <figcaption><h3>Fraud by channel</h3><p>Share of fraud losses against share of all payments.</p></figcaption>
+        <div class="chart" id="c-fraud-channel"></div>
+      </figure>
+      <figure class="card">
+        <figcaption><h3>Time to report</h3><p>Days between the payment and the customer's chargeback.</p></figcaption>
+        <div class="chart" id="c-report" style="--h:220px"></div>
+      </figure>
+      <figure class="card span2">
+        <figcaption><h3>Fraud hotspots</h3><p>Channel, category and geography combinations ranked by losses.</p></figcaption>
+        <div class="table-wrap"><table class="data" id="t-hotspots"></table></div>
+      </figure>
+    </div>
+  </section>
+
+  <section id="rules" class="wrap block">
+    <div class="section-head">
+      <h2>Fraud rules</h2>
+      <p>Each rule is one SQL query with window functions. Alerts are raised on approved payments; declined attempts still count as signal. <span class="code">sql/rules/</span></p>
+    </div>
+    <figure class="card">
+      <figcaption><h3>Rule scorecard</h3><p>Precision: share of alerts that were fraud. Recall: share of fraud transactions caught. Value caught: share of fraud euros caught. Lift: how much more likely an alert is to be fraud than a random payment.</p></figcaption>
+      <div class="table-wrap"><table class="data" id="t-scorecard"></table></div>
+    </figure>
+
+    <div class="grid two">
+      <figure class="card">
+        <figcaption><h3>Read the SQL</h3><p>The exact query behind each rule.</p></figcaption>
+        <div class="tabs" id="sql-tabs" role="tablist"></div>
+        <pre class="sql" id="sql-view"><code></code></pre>
+      </figure>
+      <figure class="card">
+        <figcaption><h3>Pick the threshold</h3><p>Each rule adds points to a risk score. Drag to see what blocking at a given score would do.</p></figcaption>
+        <div class="slider-row">
+          <label for="thr">Block at score ≥ <b id="thr-v"></b></label>
+          <input type="range" id="thr" min="0" max="0" step="1">
+        </div>
+        <div class="mini-kpis" id="thr-kpis"></div>
+        <div class="chart" id="c-curve" style="--h:250px"></div>
+      </figure>
+    </div>
+
+    <figure class="card">
+      <figcaption><h3>Tuning a single rule</h3><p>Loosen a rule and it catches more fraud, but more of its alerts are genuine customers. The ringed point is the chosen setting.</p></figcaption>
+      <div class="multiples" id="c-tuning"></div>
+    </figure>
+  </section>
+
+  <section id="queue" class="wrap block">
+    <div class="section-head">
+      <h2>Alert queue</h2>
+      <p id="queue-sub"></p>
+    </div>
+    <figure class="card">
+      <figcaption><h3>Highest-risk alerts</h3><p>What the fraud team would open first, with the evidence each rule found. Outcome comes from the chargebacks.</p></figcaption>
+      <div class="table-wrap"><table class="data" id="t-queue"></table></div>
+    </figure>
+  </section>
+
+  <section id="data" class="wrap block">
+    <div class="section-head">
+      <h2>About the data</h2>
+      <p>Synthetic and seeded: <span class="code">python -m ledger</span> rebuilds the same database and this page.</p>
+    </div>
+    <div class="grid three">
+      <div class="card schema"><h3>customers</h3><p>age band, district, segment, joined</p></div>
+      <div class="card schema"><h3>cards</h3><p>debit or credit, issued, credit limit</p></div>
+      <div class="card schema"><h3>merchants</h3><p>MCC, category, country, online, high-risk</p></div>
+      <div class="card schema"><h3>transactions</h3><p>card, merchant, time, amount, channel, country, status</p></div>
+      <div class="card schema"><h3>chargebacks</h3><p>reported on, reason: fraud or dispute</p></div>
+      <div class="card schema muted-card"><h3>Planted attacks</h3><p>card testing, cloned cards used abroad, night-time account takeovers</p></div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p>Ledger <span data-k="version"></span> · Banco Marés and every customer and merchant in it are fictional. Built by <a href="https://diogos7.github.io">Diogo Santos</a>.</p>
+</footer>
+
+<div class="tooltip" id="tip" role="status" aria-live="polite" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
