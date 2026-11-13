@@ -75,6 +75,10 @@ WHERE status = 'Approved' AND txns_in_window >= :min_txns;
 | --- | --- |
 | ![Dark theme](docs/screenshots/dark.png) | <img src="docs/screenshots/mobile.png" alt="Phone" width="300"> |
 
+| Ask it with AI: [Ledger MCP](https://github.com/DiogoS7/Ledger-MCP) in the MCP Inspector |
+| --- |
+| ![explain_payment shows why payment 406064 was blocked: two checks, 65 points, and it really was fraud](docs/screenshots/mcp.png) |
+
 ## How it works
 
 ```
