@@ -14,6 +14,8 @@ Ledger follows a year of card payments at Meridian Bank, a made-up Portuguese ba
 
 Under the hood it is a data analysis project in **Python and SQL**: a SQLite database, SQL queries for every number, fraud checks written as SQL, and Python (pandas) to score how well they work.
 
+**Ask it with AI:** [Ledger MCP](https://github.com/DiogoS7/Ledger-MCP) is an MCP server for this project. It lets Claude or another AI assistant query the data, explain why a payment was blocked, find fraud that was missed, and try out stricter or looser checks.
+
 ![The report](docs/screenshots/overview.png)
 
 ## What we found
@@ -117,6 +119,8 @@ python -m http.server 8000 -d site   # then open http://localhost:8000
 ```
 
 Open `data/ledger.db` in any SQLite tool (DB Browser for SQLite, DBeaver, VS Code) to run your own queries. `python -m pytest -q` runs the tests.
+
+To ask questions in plain words instead, connect an AI assistant with [Ledger MCP](https://github.com/DiogoS7/Ledger-MCP). It uses this checkout and its database.
 
 ## Tests and CI
 
