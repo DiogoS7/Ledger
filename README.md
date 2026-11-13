@@ -117,7 +117,7 @@ Claude Desktop (Settings → Developer → Edit Config):
 }
 ```
 
-If the client can't find Python, use its full path. `ledger-mcp` is installed as a command too. Set `LEDGER_DB` to serve a database somewhere else.
+On Windows, use `py` instead of `python` in the terminal if `python` is not found, and give Claude Desktop Python's full path as `command` (run `py -c "import sys; print(sys.executable)"`, then write each `\` twice in the JSON). `ledger-mcp` is installed as a command too. Set `LEDGER_DB` to serve a database somewhere else.
 
 | Tool | What it does |
 | --- | --- |

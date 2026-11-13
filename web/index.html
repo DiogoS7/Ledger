@@ -192,7 +192,7 @@
           <div class="copy-box"><pre id="cmd-1">git clone https://github.com/DiogoS7/Ledger.git
 cd Ledger
 pip install -e ".[mcp]"
-python -m ledger</pre><button type="button" class="copy" data-copy="cmd-1">Copy</button></div>
+python -m ledger</pre><p class="muted small">On Windows, if <span class="code">python</span> is not found, type <span class="code">py</span> instead.</p><button type="button" class="copy" data-copy="cmd-1">Copy</button></div>
         </li>
         <li>
           <div><b>Connect your AI assistant</b></div>
@@ -201,7 +201,7 @@ python -m ledger</pre><button type="button" class="copy" data-copy="cmd-1">Copy<
             <button type="button" role="tab" aria-selected="false" data-client="code">Claude Code</button>
           </div>
           <div class="client" data-for="desktop">
-            <p class="muted">In Claude Desktop, open Settings → Developer → Edit Config, add this, save and restart Claude. If Claude can't find Python, replace <span class="code">python</span> with its full path (run <span class="code">where python</span> on Windows or <span class="code">which python3</span> on a Mac).</p>
+            <p class="muted">In Claude Desktop, open Settings → Developer → Edit Config, add this, save and restart Claude. On Windows, put Python's full path in <span class="code">command</span>: run <span class="code">py -c "import sys; print(sys.executable)"</span> and use what it prints, with each <span class="code">\</span> written twice. On a Mac, use the path from <span class="code">which python3</span>.</p>
             <div class="copy-box"><pre id="cmd-2">{
   "mcpServers": {
     "ledger": {
