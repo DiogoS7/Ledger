@@ -1,0 +1,33 @@
+[project]
+name = "ledger-mcp"
+version = "0.1.0"
+description = "MCP server over Ledger: ask an AI about card payments, explain fraud alerts and try out the checks"
+readme = "README.md"
+authors = [{ name = "Diogo Santos" }]
+requires-python = ">=3.12"
+license = "MIT"
+keywords = ["mcp", "fraud", "sqlite", "card-payments", "ledger"]
+dependencies = [
+    "mcp>=2.3,<3",
+    "numpy>=1.24",
+    "pandas>=2.0",
+]
+
+[project.scripts]
+ledger-mcp = "ledger_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/DiogoS7/Ledger-MCP"
+Ledger = "https://github.com/DiogoS7/Ledger"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
