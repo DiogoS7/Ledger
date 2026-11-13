@@ -15,6 +15,10 @@ With this server, Claude (or any MCP client) can:
 
 It doesn't copy anything from Ledger. It imports the `ledger` package from a Ledger checkout, so the checks, scoring and points system are the same code that builds [the report](https://diogos7.github.io/Ledger/).
 
+![explain_payment in the MCP Inspector: payment 406064 was blocked by two checks (65 points) and really was fraud](docs/screenshots/inspector.png)
+
+*`explain_payment` run in the [MCP Inspector](https://github.com/modelcontextprotocol/inspector): payment 406064 tripped two checks (65 points), was blocked, and really was fraud.*
+
 ## Tools
 
 | Tool | What it does |
