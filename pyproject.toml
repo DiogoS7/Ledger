@@ -1,9 +1,32 @@
 [project]
 name = "ledger"
-version = "1.0.0"
-description = "Card transaction and fraud analytics in Python and SQL"
+version = "1.1.0"
+description = "Card payments and fraud checks in Python and SQL, with an MCP server for AI assistants"
+readme = "README.md"
+authors = [{ name = "Diogo Santos" }]
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = ["pandas>=2.0", "numpy>=1.24"]
+
+[project.optional-dependencies]
+# the MCP server (python -m ledger mcp) needs Python 3.12+
+mcp = ["mcp>=2.3,<3"]
+dev = ["pytest>=8.0", "anyio"]
+
+[project.scripts]
+ledger = "ledger.__main__:main"
+ledger-mcp = "ledger.mcp:main"
+
+[project.urls]
+Homepage = "https://diogos7.github.io/Ledger/"
+Source = "https://github.com/DiogoS7/Ledger"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["ledger*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

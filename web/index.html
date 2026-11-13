@@ -23,6 +23,7 @@
       <a href="#checks">The checks</a>
       <a href="#try">Try it</a>
       <a href="#examples">Examples</a>
+      <a href="#ask">Ask AI</a>
     </nav>
     <div class="actions">
       <button class="icon-btn" id="theme" type="button" aria-label="Switch between light and dark" title="Light / dark">
@@ -38,6 +39,7 @@
     <span class="badge">Meridian Bank · one year of card payments</span>
     <h1>Where does the money go, and how do you <em>catch a card thief?</em></h1>
     <p class="lede">We followed a year of card payments at Meridian Bank, a made-up Portuguese bank, to see how people spend and how fraudsters try to steal. Then we built six simple checks that spot fraud the moment it happens.</p>
+    <a class="ask-cta" href="#ask"><span class="spark" aria-hidden="true">✦</span> New: ask an AI assistant about this data</a>
     <div class="kpis" id="kpis"></div>
   </section>
 
@@ -144,6 +146,88 @@
       <div><h2>Real examples</h2><p>Six payments the checks flagged, and what really happened.</p></div>
     </div>
     <div class="examples" id="examples-list"></div>
+  </section>
+
+  <section id="ask" class="wrap block">
+    <div class="section-head">
+      <span class="step">6</span>
+      <div><h2>Ask an AI about it</h2><p>Connect Claude, or another AI assistant, and ask questions in your own words. It looks the answers up in the real data instead of guessing.</p></div>
+    </div>
+
+    <div class="grid two ask-grid">
+      <div class="card chat" aria-label="Example conversation">
+        <div class="bubble you">Why was payment 406064 stopped? Was it really fraud?</div>
+        <div class="tool-note">Claude looks up the payment and the card's history</div>
+        <div class="bubble ai">
+          <p>It was a <b>€1,495 online purchase at an electronics shop at 4:53 in the morning</b>, on the debit card of a customer aged 65+ from Lisboa.</p>
+          <p>Two checks fired: <b>Unusually big payment</b> (+30 points, 14 times what this card usually spends) and <b>Late-night risky shop</b> (+35). That makes 65 points, over the 60 needed to stop it.</p>
+          <p>The customer reported it as fraud five days later, so <b>stopping it was the right call</b>. It looks like a hijacked account.</p>
+        </div>
+        <div class="bubble you">What if the bank stopped payments at 50 points instead of 60?</div>
+        <div class="tool-note">Claude tries the new setting without changing anything</div>
+        <div class="bubble ai">
+          <p>It would stop <b>88% of the stolen money automatically</b> instead of 77%. But it would also stop <b>253 honest payments</b> a year instead of 11, so many more customers would get a call.</p>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Things you can ask</h3>
+        <ul class="asks" id="asks"></ul>
+        <h3 class="mt">What it can do</h3>
+        <ul class="cando">
+          <li><b>Answer questions</b> about spending, customers and fraud, with real numbers</li>
+          <li><b>Explain a decision</b>: why a payment was stopped, and whether it really was fraud</li>
+          <li><b>Find the mistakes</b>: fraud that slipped through, and honest customers who were stopped</li>
+          <li><b>Try changes safely</b>: stricter or looser checks, before anyone changes anything</li>
+        </ul>
+        <p class="safe"><span aria-hidden="true">🔒</span> It can only look. It never changes the data.</p>
+      </div>
+    </div>
+
+    <div class="card setup">
+      <h3>Set it up in three steps</h3>
+      <p class="muted">You need Python 3.12 or newer and Git. It runs on your own computer.</p>
+      <ol class="steps">
+        <li>
+          <div><b>Download Ledger and build its data</b> <span class="muted">(about a minute)</span></div>
+          <div class="copy-box"><pre id="cmd-1">git clone https://github.com/DiogoS7/Ledger.git
+cd Ledger
+pip install -e ".[mcp]"
+python -m ledger</pre><button type="button" class="copy" data-copy="cmd-1">Copy</button></div>
+        </li>
+        <li>
+          <div><b>Connect your AI assistant</b></div>
+          <div class="tabs" role="tablist" id="client-tabs">
+            <button type="button" role="tab" aria-selected="true" data-client="desktop">Claude Desktop</button>
+            <button type="button" role="tab" aria-selected="false" data-client="code">Claude Code</button>
+          </div>
+          <div class="client" data-for="desktop">
+            <p class="muted">In Claude Desktop, open Settings → Developer → Edit Config, add this, save and restart Claude. If Claude can't find Python, replace <span class="code">python</span> with its full path (run <span class="code">where python</span> on Windows or <span class="code">which python3</span> on a Mac).</p>
+            <div class="copy-box"><pre id="cmd-2">{
+  "mcpServers": {
+    "ledger": {
+      "command": "python",
+      "args": ["-m", "ledger", "mcp"]
+    }
+  }
+}</pre><button type="button" class="copy" data-copy="cmd-2">Copy</button></div>
+          </div>
+          <div class="client" data-for="code" hidden>
+            <p class="muted">In a terminal:</p>
+            <div class="copy-box"><pre id="cmd-3">claude mcp add ledger -- python -m ledger mcp</pre><button type="button" class="copy" data-copy="cmd-3">Copy</button></div>
+          </div>
+        </li>
+        <li>
+          <div><b>Ask away</b></div>
+          <p class="muted">Start a new chat and try one of the questions above. Claude will say it is using Ledger when it looks something up.</p>
+        </li>
+      </ol>
+      <details class="more">
+        <summary>For the technical reader: the MCP server</summary>
+        <p class="muted">Ledger includes an <a href="https://modelcontextprotocol.io">MCP</a> server (<span class="code">ledger/mcp</span>) with 12 read-only tools, 2 resources and 2 prompts. It uses the same SQL checks, scoring and points system as this page. The database is opened read-only, and free-form SQL is limited to single SELECT queries with a read-only authorizer, a row cap and a time limit.</p>
+        <div class="table-wrap"><table class="data" id="t-tools"></table></div>
+        <figure class="inspector"><img src="img/mcp-inspector.png" alt="The explain_payment tool in the MCP Inspector, showing payment 406064 blocked by two checks with 65 points" loading="lazy"><figcaption>explain_payment in the MCP Inspector</figcaption></figure>
+      </details>
+    </div>
   </section>
 
   <section id="behind" class="wrap block">

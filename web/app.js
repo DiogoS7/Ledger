@@ -518,3 +518,46 @@ new ResizeObserver(() => {
 
 fetch("data.json").then(r => r.json()).then(d => { D = d; lastW = document.body.clientWidth; render(); })
   .catch(err => { $("#kpis").textContent = "Could not load data.json. Run `python -m ledger` first. " + err; });
+
+/* ---------- ask an AI: questions, setup tabs, copy buttons, tools table ---------- */
+const QUESTIONS = [
+  "Which country do stolen cards get used in most?",
+  "Why was payment 406064 stopped? Was it really fraud?",
+  "Show me the biggest frauds the checks missed, and why they got through.",
+  "What if the bank stopped payments at 50 points instead of 60?",
+  "Which check causes the most false alarms, and how could it be better?",
+  "How has tapping to pay changed over the year?",
+];
+const TOOLS = [
+  ["ledger_overview", "The headline numbers"],
+  ["describe_schema", "The tables and columns in the database"],
+  ["list_analyses / run_analysis", "The 10 ready-made analyses behind this page"],
+  ["query_sql", "Any read-only SELECT query (500 rows, 20 seconds max)"],
+  ["list_checks", "The six checks in plain words, with points, settings and SQL"],
+  ["check_scorecard", "How well each check and the points system work"],
+  ["try_check_setting", "Re-run one check with one setting changed"],
+  ["try_thresholds", "Change the review and block points, and compare"],
+  ["explain_payment", "One payment in full: checks tripped, score, decision, real outcome"],
+  ["card_activity", "A card's payments in order, around a suspicious one"],
+  ["find_payments", "Examples by outcome: caught, missed, false alarm, reviewed"],
+];
+async function copyText(text, btn) {
+  try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; btn.classList.add("done"); }
+  catch (e) { btn.textContent = "Select and copy"; }
+  setTimeout(() => { btn.textContent = btn.dataset.label || "Copy"; btn.classList.remove("done"); }, 1600);
+}
+(function setupAsk() {
+  const ul = $("#asks");
+  for (const q of QUESTIONS) {
+    const li = el("li"), b = el("button", { type: "button", "data-label": "Copy" }, "Copy");
+    b.addEventListener("click", () => copyText(q, b));
+    li.append(el("span", {}, q), b); ul.appendChild(li);
+  }
+  document.querySelectorAll(".copy").forEach(b => b.addEventListener("click", () => copyText($("#" + b.dataset.copy).textContent, b)));
+  const tabs = document.querySelectorAll("#client-tabs button");
+  tabs.forEach(t => t.addEventListener("click", () => {
+    tabs.forEach(x => x.setAttribute("aria-selected", x === t));
+    document.querySelectorAll(".client").forEach(c => { c.hidden = c.dataset.for !== t.dataset.client; });
+  }));
+  table($("#t-tools"), [{ h: "Tool", v: r => el("span", { class: "code" }, r[0]) }, { h: "What it does", v: r => r[1] }], TOOLS);
+})();

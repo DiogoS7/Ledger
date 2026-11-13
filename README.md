@@ -14,7 +14,7 @@ Ledger follows a year of card payments at Meridian Bank, a made-up Portuguese ba
 
 Under the hood it is a data analysis project in **Python and SQL**: a SQLite database, SQL queries for every number, fraud checks written as SQL, and Python (pandas) to score how well they work.
 
-**Ask it with AI:** [Ledger MCP](https://github.com/DiogoS7/Ledger-MCP) is an MCP server for this project. It lets Claude or another AI assistant query the data, explain why a payment was blocked, find fraud that was missed, and try out stricter or looser checks.
+**Ask it with AI:** Ledger comes with its own [MCP](https://modelcontextprotocol.io) server, so Claude or another AI assistant can query the data, explain why a payment was blocked, find fraud that was missed, and try out stricter or looser checks. See [Ask an AI about it](#ask-an-ai-about-it).
 
 ![The report](docs/screenshots/overview.png)
 
@@ -71,13 +71,69 @@ WHERE status = 'Approved' AND txns_in_window >= :min_txns;
 | --- | --- |
 | ![Examples](docs/screenshots/examples.png) | ![Scorecard, tuning and SQL](docs/screenshots/technical.png) |
 
+| Ask an AI about it |
+| --- |
+| ![Ask an AI: example conversation and questions to try](docs/screenshots/ask.png) |
+
 | Dark theme | Phone |
 | --- | --- |
 | ![Dark theme](docs/screenshots/dark.png) | <img src="docs/screenshots/mobile.png" alt="Phone" width="300"> |
 
-| Ask it with AI: [Ledger MCP](https://github.com/DiogoS7/Ledger-MCP) in the MCP Inspector |
-| --- |
-| ![explain_payment shows why payment 406064 was blocked: two checks, 65 points, and it really was fraud](docs/screenshots/mcp.png) |
+## Ask an AI about it
+
+Ledger includes an MCP server, so Claude (or any MCP client) can work with the data in plain words:
+
+- **answer questions:** "Which country do stolen cards get used in most?"
+- **explain a decision:** "Why was payment 406064 blocked? Was it really fraud?"
+- **find the mistakes:** "Show me the biggest frauds the checks missed."
+- **try changes before making them:** "What if we block at 50 points instead of 60?"
+
+It runs from this project, so the checks, scoring and points system are the same code that builds the report. Every tool is read-only.
+
+![explain_payment in the MCP Inspector: payment 406064 was blocked by two checks (65 points) and really was fraud](docs/screenshots/mcp-inspector.png)
+
+**Set it up** (needs Python 3.12+):
+
+```bash
+git clone https://github.com/DiogoS7/Ledger.git
+cd Ledger
+pip install -e ".[mcp]"
+python -m ledger          # build the database (about a minute)
+```
+
+Then connect it. Claude Code:
+
+```bash
+claude mcp add ledger -- python -m ledger mcp
+```
+
+Claude Desktop (Settings → Developer → Edit Config):
+
+```json
+{
+  "mcpServers": {
+    "ledger": { "command": "python", "args": ["-m", "ledger", "mcp"] }
+  }
+}
+```
+
+If the client can't find Python, use its full path. `ledger-mcp` is installed as a command too. Set `LEDGER_DB` to serve a database somewhere else.
+
+| Tool | What it does |
+| --- | --- |
+| `ledger_overview` | Headline numbers: customers, payments, money spent, fraud losses, thresholds |
+| `describe_schema` | Tables, columns, row counts and the commented schema |
+| `list_analyses` / `run_analysis` | The 10 ready-made SQL analyses behind the report |
+| `query_sql` | Any read-only `SELECT` / `WITH` query, capped at 500 rows and 20 seconds |
+| `list_checks` | The six checks in plain words, with their points, settings and SQL |
+| `check_scorecard` | Precision, recall and euros caught, for each check and for the points system |
+| `try_check_setting` | Re-run one check with one setting changed and compare |
+| `try_thresholds` | Change the review/block thresholds and see fraud caught vs genuine customers stopped |
+| `explain_payment` | One payment in full: checks tripped with evidence, score, decision, and whether it really was fraud |
+| `card_activity` | A card's payments in order, optionally around one payment |
+| `find_payments` | Example payments by outcome: `caught`, `missed`, `false_alarm`, `reviewed` |
+
+It also has two resources (`ledger://schema`, `ledger://checks`) and two prompts (`investigate_payment`, `tune_the_checks`). The database is opened with SQLite's `mode=ro`, and `query_sql` adds an authorizer that only allows reads, so writes, `ATTACH`, `PRAGMA` and extension loading are refused. The what-if tools change settings for that call only.
 
 ## How it works
 
@@ -103,12 +159,13 @@ ledger/            Python package
   db.py            runs a .sql file and returns a DataFrame
   rules.py         the six checks, scoring, the points system, tuning
   report.py        runs everything and writes the web page
+  mcp/server.py    the MCP server: 12 read-only tools, 2 resources, 2 prompts
 sql/
   schema.sql       tables, constraints and indexes
   analysis/        01–10: spending and fraud queries
   rules/           r1–r6: the checks, plus ground_truth.sql
 web/               the page (index.html, styles.css, app.js)
-tests/             pytest: every check on hand-made payments, plus end-to-end checks
+tests/             pytest: every check on hand-made payments, end-to-end checks, and the MCP server
 ```
 
 ## Run it on your computer
@@ -117,18 +174,18 @@ Needs Python 3.10 or newer.
 
 ```bash
 cd Ledger
-pip install -r requirements.txt
+pip install -e .
 python -m ledger                     # build the database and the page (about a minute)
 python -m http.server 8000 -d site   # then open http://localhost:8000
 ```
 
 Open `data/ledger.db` in any SQLite tool (DB Browser for SQLite, DBeaver, VS Code) to run your own queries. `python -m pytest -q` runs the tests.
 
-To ask questions in plain words instead, connect an AI assistant with [Ledger MCP](https://github.com/DiogoS7/Ledger-MCP). It uses this checkout and its database.
+To ask questions in plain words instead, connect an AI assistant: see [Ask an AI about it](#ask-an-ai-about-it).
 
 ## Tests and CI
 
-17 pytest tests. Every check is tested on hand-made payments: it must fire on the trick it targets and stay quiet on the honest behaviour that looks like it (a traveller landing abroad, a busy shopping day, a big purchase with no history). End-to-end tests make sure the data is the same on every run, every query works and the combined score beats the noisiest single check.
+35 pytest tests. Every check is tested on hand-made payments: it must fire on the trick it targets and stay quiet on the honest behaviour that looks like it (a traveller landing abroad, a busy shopping day, a big purchase with no history). End-to-end tests make sure the data is the same on every run, every query works and the combined score beats the noisiest single check. The MCP tests call every tool through an MCP client and check that anything but a read is refused.
 
 GitHub Actions runs the tests on every push, rebuilds the database and the page, and publishes it to GitHub Pages.
 

@@ -8,4 +8,4 @@ DATA_DIR = ROOT / "data"
 DB_PATH = DATA_DIR / "ledger.db"
 SITE_DIR = ROOT / "site"
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
